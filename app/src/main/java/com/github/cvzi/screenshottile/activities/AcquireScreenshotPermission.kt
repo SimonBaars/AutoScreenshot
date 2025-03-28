@@ -35,6 +35,39 @@ class AcquireScreenshotPermission : BaseActivity() {
         private const val SCREENSHOT_REQUEST_CODE = 4552
         private const val WRITE_REQUEST_CODE = 12345
         private const val NOTIFICATIONS_REQUEST_CODE = 12346
+        
+        // Prevent multiple instances from launching too quickly
+        private var lastLaunchTime = 0L
+        private const val MIN_LAUNCH_INTERVAL_MS = 2000L
+        private var isPermissionRequestInProgress = false
+        
+        /**
+         * Check if we can start a new permission request
+         */
+        private fun canLaunchNow(): Boolean {
+            val now = System.currentTimeMillis()
+            return !isPermissionRequestInProgress && (now - lastLaunchTime) >= MIN_LAUNCH_INTERVAL_MS
+        }
+        
+        /**
+         * Start the permission request activity with throttling
+         */
+        fun startPermissionRequest(context: Context, intent: Intent) {
+            if (!canLaunchNow()) {
+                Log.d(TAG, "Skipping permission request - another one is in progress or too recent")
+                return
+            }
+            
+            lastLaunchTime = System.currentTimeMillis()
+            isPermissionRequestInProgress = true
+            
+            // Add FLAG_ACTIVITY_NEW_TASK if not called from an Activity
+            if (context !is Activity) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            
+            context.startActivity(intent)
+        }
     }
 
     private var askedForStoragePermission = false
@@ -175,6 +208,12 @@ class AcquireScreenshotPermission : BaseActivity() {
                 App.getInstance().screenshot(this)
             }
         }
+        isPermissionRequestInProgress = false
         finish()
+    }
+    
+    override fun finish() {
+        isPermissionRequestInProgress = false
+        super.finish()
     }
 }

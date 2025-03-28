@@ -13,7 +13,9 @@ import android.util.Log
 import com.github.cvzi.screenshottile.App
 import com.github.cvzi.screenshottile.BuildConfig
 import com.github.cvzi.screenshottile.activities.TakeScreenshotActivity
+import com.github.cvzi.screenshottile.activities.NoDisplayActivity
 import com.github.cvzi.screenshottile.utils.foregroundNotification
+import com.github.cvzi.screenshottile.utils.ScreenshotManager
 
 /**
  * Foreground service for MediaProjection and automatic screenshots
@@ -31,7 +33,20 @@ class BasicForegroundService : Service() {
             BuildConfig.APPLICATION_ID + "BasicForegroundService.START_AUTO_SCREENSHOTS"
         private const val STOP_AUTO_SCREENSHOTS =
             BuildConfig.APPLICATION_ID + "BasicForegroundService.STOP_AUTO_SCREENSHOTS"
+        private const val MIN_SCREENSHOT_INTERVAL_MS = 3000L // Minimum 3 seconds between screenshots
         var instance: BasicForegroundService? = null
+
+        // Keep track of the last time a screenshot was taken
+        private var lastScreenshotTime = 0L
+        
+        /**
+         * Check if we can take a screenshot now (to prevent spam)
+         */
+        private fun canTakeScreenshotNow(): Boolean {
+            val now = System.currentTimeMillis()
+            val timeSinceLastScreenshot = now - lastScreenshotTime
+            return timeSinceLastScreenshot > MIN_SCREENSHOT_INTERVAL_MS
+        }
 
         /**
          * Start this service in the foreground
@@ -148,50 +163,72 @@ class BasicForegroundService : Service() {
      */
     private fun startAutoScreenshotLoop() {
         if (isAutoScreenshotRunning) {
+            Log.d(TAG, "startAutoScreenshotLoop: already running")
             return
         }
 
         if (App.getScreenshotPermission() == null) {
             // Ask for permission first
+            Log.d(TAG, "startAutoScreenshotLoop: no permission, requesting...")
             App.acquireScreenshotPermission(this, object : com.github.cvzi.screenshottile.interfaces.OnAcquireScreenshotPermissionListener {
                 override fun onAcquireScreenshotPermission(isNewPermission: Boolean) {
                     // Now that we have permission, start the loop
+                    Log.d(TAG, "onAcquireScreenshotPermission: got permission, starting loop")
                     startAutoScreenshotLoopInternal()
                 }
             })
         } else {
+            Log.d(TAG, "startAutoScreenshotLoop: have permission, starting loop directly")
             startAutoScreenshotLoopInternal()
         }
     }
 
     private fun startAutoScreenshotLoopInternal() {
         if (isAutoScreenshotRunning) {
+            Log.d(TAG, "startAutoScreenshotLoopInternal: already running")
             return
         }
         
+        Log.d(TAG, "startAutoScreenshotLoopInternal: starting auto screenshot loop")
         isAutoScreenshotRunning = true
         
         // Create and start the runnable that takes screenshots at intervals
         autoScreenshotRunnable = object : Runnable {
             override fun run() {
                 if (!isAutoScreenshotRunning) {
+                    Log.d(TAG, "autoScreenshotRunnable: stopped")
                     return
                 }
                 
                 try {
-                    // Take a screenshot
-                    App.getInstance().screenshot(this@BasicForegroundService, 0)
+                    // Check service-level throttling 
+                    val now = System.currentTimeMillis()
+                    val timeSinceLastScreenshot = now - lastScreenshotTime
+                    
+                    if (timeSinceLastScreenshot < MIN_SCREENSHOT_INTERVAL_MS) {
+                        Log.d(TAG, "Auto screenshot: skipping - too soon ($timeSinceLastScreenshot ms < $MIN_SCREENSHOT_INTERVAL_MS ms)")
+                    } else {
+                        Log.d(TAG, "Auto screenshot: attempting to take screenshot")
+                        
+                        // Let the ScreenshotManager decide if we can take a screenshot
+                        if (ScreenshotManager.attemptScreenshot(this@BasicForegroundService, false)) {
+                            lastScreenshotTime = now
+                            Log.d(TAG, "Auto screenshot: successfully initiated")
+                        }
+                    }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error taking automatic screenshot: ${e.message}")
+                    Log.e(TAG, "Auto screenshot: error taking screenshot", e)
                 } finally {
-                    // Schedule the next screenshot based on the interval setting
+                    // Always schedule the next screenshot based on the interval
                     val intervalSeconds = App.getInstance().prefManager.autoScreenshotInterval
+                    Log.d(TAG, "Auto screenshot: scheduling next attempt in $intervalSeconds seconds")
                     handler.postDelayed(this, intervalSeconds * 1000L)
                 }
             }
         }
         
         // Start the loop immediately
+        Log.d(TAG, "startAutoScreenshotLoopInternal: posting first runnable")
         autoScreenshotRunnable?.let { handler.post(it) }
     }
 

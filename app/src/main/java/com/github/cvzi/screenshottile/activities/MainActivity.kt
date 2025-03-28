@@ -10,10 +10,16 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.Html
+import android.text.Spannable
+import android.text.SpannableString
 import android.text.method.LinkMovementMethod
+import android.text.style.ForegroundColorSpan
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
 import androidx.databinding.DataBindingUtil
 import com.github.cvzi.screenshottile.App
@@ -21,7 +27,11 @@ import com.github.cvzi.screenshottile.BR
 import com.github.cvzi.screenshottile.BuildConfig
 import com.github.cvzi.screenshottile.R
 import com.github.cvzi.screenshottile.ToastType
+import com.github.cvzi.screenshottile.activities.HistoryActivity
+import com.github.cvzi.screenshottile.activities.LanguageActivity
+import com.github.cvzi.screenshottile.activities.SettingsActivity
 import com.github.cvzi.screenshottile.databinding.ActivityMainBinding
+import com.github.cvzi.screenshottile.interfaces.OnAcquireScreenshotPermissionListener
 import com.github.cvzi.screenshottile.services.BasicForegroundService
 import com.github.cvzi.screenshottile.utils.formatLocalizedString
 import com.github.cvzi.screenshottile.utils.getLocalizedString
@@ -51,6 +61,7 @@ class MainActivity : BaseAppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var askedForStoragePermission = false
+    private var showHistoryReminder = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +74,17 @@ class MainActivity : BaseAppCompatActivity() {
             getLocalizedString(R.string.setting_auto_screenshot_summary),
             Html.FROM_HTML_SEPARATOR_LINE_BREAK_DIV
         )
+
+        // Ensure we have the necessary screenshot permission
+        App.acquireScreenshotPermission(this, object : OnAcquireScreenshotPermissionListener {
+            override fun onAcquireScreenshotPermission(isNewPermission: Boolean) {
+                Log.d("MainActivity", "Screenshot permission acquired: $isNewPermission")
+                // After getting permission, enable auto screenshots if it's set
+                if (App.getInstance().prefManager.autoScreenshotEnabled) {
+                    BasicForegroundService.startAutoScreenshots(this@MainActivity)
+                }
+            }
+        })
 
         toggleSwitchOnLabel(R.id.switchAutoScreenshot, R.id.textTitleAutoScreenshot)
 
@@ -82,17 +104,39 @@ class MainActivity : BaseAppCompatActivity() {
                     App.requestStoragePermission(this, false)
                 }
                 
+                // Set screenshot interval to 10 seconds
+                App.getInstance().prefManager.autoScreenshotInterval = 10
+                
                 // Start the auto screenshot service
                 BasicForegroundService.startAutoScreenshots(this)
+                
+                // Show a reminder about history
+                binding.textHistoryReminder.visibility = View.VISIBLE
+                showHistoryReminder = true
             } else {
                 // Stop the auto screenshot service
                 BasicForegroundService.stopAutoScreenshots(this)
+                
+                // Hide the history reminder
+                binding.textHistoryReminder.visibility = View.GONE
+                showHistoryReminder = false
             }
         }
 
-        // Set up the interval editor
-        val editInterval = binding.editInterval
-        editInterval.setText(App.getInstance().prefManager.autoScreenshotInterval.toString())
+        // Hide the interval editor as we're fixing it to 10 seconds
+        binding.editInterval.visibility = View.GONE
+        
+        // Hide any text view related to interval setting
+        val parent = binding.root as ViewGroup
+        for (i in 0 until parent.childCount) {
+            val child = parent.getChildAt(i)
+            if (child is TextView && child.text.contains("interval", ignoreCase = true)) {
+                child.visibility = View.GONE
+            }
+        }
+        
+        // Set the interval to 10 seconds
+        App.getInstance().prefManager.autoScreenshotInterval = 10
         
         // Set up the start on boot switch
         val switchStartOnBoot = binding.switchStartOnBoot
@@ -112,6 +156,8 @@ class MainActivity : BaseAppCompatActivity() {
             SettingsActivity.start(this)
         }
         binding.buttonHistoryView.setOnClickListener {
+            showHistoryReminder = false
+            binding.textHistoryReminder.visibility = View.GONE
             startActivity(Intent(this, HistoryActivity::class.java))
         }
         binding.buttonChangeLanguage.setOnClickListener {
@@ -137,6 +183,12 @@ class MainActivity : BaseAppCompatActivity() {
         } catch (e: PackageManager.NameNotFoundException) {
             Log.e(TAG, e.toString())
         }
+        
+        // If automatic screenshots are enabled, show the history reminder
+        if (App.getInstance().prefManager.autoScreenshotEnabled) {
+            binding.textHistoryReminder.visibility = View.VISIBLE
+            showHistoryReminder = true
+        }
     }
 
     private fun toggleSwitchOnLabel(switchId: Int, labelId: Int) {
@@ -156,6 +208,9 @@ class MainActivity : BaseAppCompatActivity() {
         binding.switchAutoScreenshot.isChecked = App.getInstance().prefManager.autoScreenshotEnabled
         binding.editInterval.setText(App.getInstance().prefManager.autoScreenshotInterval.toString())
         binding.switchStartOnBoot.isChecked = App.getInstance().prefManager.autoScreenshotStartOnBoot
+        
+        // Reset history reminder if we returned from the history activity
+        binding.textHistoryReminder.visibility = if (showHistoryReminder) View.VISIBLE else View.GONE
     }
 
     override fun onPause() {

@@ -51,6 +51,7 @@ import com.github.cvzi.screenshottile.utils.getLocalizedString
 import com.github.cvzi.screenshottile.utils.handlePostScreenshot
 import com.github.cvzi.screenshottile.utils.realScreenSize
 import com.github.cvzi.screenshottile.utils.toastMessage
+import com.github.cvzi.screenshottile.utils.ScreenshotManager
 
 /**
  * Created by cuzi (cuzi@openmail.cc) on 2018/12/29.
@@ -70,20 +71,43 @@ class TakeScreenshotActivity : BaseActivity(),
         const val NOTIFICATION_PREVIEW_MAX_SIZE = 400
         const val NOTIFICATION_BIG_PICTURE_MAX_HEIGHT = 1024
         const val EXTRA_PARTIAL = "$APPLICATION_ID.TakeScreenshotActivity.EXTRA_PARTIAL"
+        
+        // Keep these for backward compatibility, but delegate to ScreenshotManager
+        @JvmStatic
+        var lastLaunchTime = 0L
+        const val MIN_LAUNCH_INTERVAL_MS = 2000L
+        @JvmStatic
+        var isScreenshotInProgress = false
 
         /**
          * Start activity.
          */
         fun start(context: Context, partial: Boolean = false) {
-            context.startActivity(newIntent(context, partial))
+            // Use ScreenshotManager to check if we can take a screenshot
+            if (!ScreenshotManager.canTakeScreenshotNow()) {
+                Log.d(TAG, "Skipping screenshot request - throttled by ScreenshotManager")
+                return
+            }
+            
+            // Update legacy static variables for backward compatibility
+            lastLaunchTime = System.currentTimeMillis()
+            isScreenshotInProgress = true
+            
+            val intent = newIntent(context, partial)
+            
+            // Add FLAG_ACTIVITY_NEW_TASK if not called from an Activity
+            if (context !is Activity) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            
+            context.startActivity(intent)
         }
 
-        private fun newIntent(context: Context, partial: Boolean = false): Intent {
+        fun newIntent(context: Context, partial: Boolean = false): Intent {
             return Intent(context, TakeScreenshotActivity::class.java).apply {
                 putExtra(EXTRA_PARTIAL, partial)
             }
         }
-
     }
 
     private var screenDensity: Int = 0
@@ -614,6 +638,13 @@ class TakeScreenshotActivity : BaseActivity(),
             ""
         }
         toastMessage(message, ToastType.ERROR, duration)
+    }
+
+    override fun finish() {
+        // Reset flags in both places
+        isScreenshotInProgress = false
+        ScreenshotManager.onScreenshotComplete()
+        super.finish()
     }
 
 }

@@ -21,6 +21,7 @@ import com.github.cvzi.screenshottile.services.ScreenshotTileService
 import com.github.cvzi.screenshottile.utils.screenshot
 import com.github.cvzi.screenshottile.utils.screenshotLegacyOnly
 import com.github.cvzi.screenshottile.utils.toastMessage
+import com.github.cvzi.screenshottile.utils.ScreenshotManager
 
 /**
  * Empty activity that is used to collapse the quick settings panel, finishes itself in onCreate
@@ -53,7 +54,9 @@ class NoDisplayActivity : BaseActivity() {
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     startForegroundService(this)
                 }
-                screenshot(this, true)
+                
+                // Directly launch screenshot via ScreenshotManager to prevent loops
+                ScreenshotManager.attemptScreenshot(this, true)
             } else if (intent.getBooleanExtra(
                     EXTRA_SCREENSHOT,
                     false
@@ -77,10 +80,15 @@ class NoDisplayActivity : BaseActivity() {
                         startForegroundService(this)
                     }
                 }
-                if (intent.getBooleanExtra(EXTRA_LEGACY, false)) {
-                    screenshotLegacyOnly(this)
+                
+                // Take the screenshot directly via ScreenshotManager
+                val isLegacy = intent.getBooleanExtra(EXTRA_LEGACY, false)
+                if (isLegacy) {
+                    // For legacy screenshots, we directly use TakeScreenshotActivity
+                    ScreenshotManager.attemptScreenshot(this, false)
                 } else {
-                    screenshot(this, false)
+                    // Normal screenshots
+                    ScreenshotManager.attemptScreenshot(this, false)
                 }
             } else if (action != null && action == EXTRA_FLOATING_BUTTON || intent.getBooleanExtra(
                     EXTRA_FLOATING_BUTTON, false
@@ -137,6 +145,39 @@ class NoDisplayActivity : BaseActivity() {
         const val EXTRA_HIDE_QUICK_SETTINGS_PANEL =
             BuildConfig.APPLICATION_ID + ".NoDisplayActivity.EXTRA_HIDE_QUICK_SETTINGS_PANEL"
 
+        // Prevent multiple instances from launching too quickly
+        private var lastLaunchTime = 0L
+        private const val MIN_LAUNCH_INTERVAL_MS = 2000L
+        private var isActivityInProgress = false
+        
+        /**
+         * Check if we can launch a new instance of NoDisplayActivity
+         */
+        private fun canLaunchNow(): Boolean {
+            val now = System.currentTimeMillis()
+            return !isActivityInProgress && (now - lastLaunchTime) >= MIN_LAUNCH_INTERVAL_MS
+        }
+        
+        /**
+         * Launch activity with throttling
+         */
+        private fun startActivityThrottled(context: Context, intent: Intent) {
+            if (!canLaunchNow()) {
+                Log.d(TAG, "Skipping activity launch - another one is in progress or too recent")
+                return
+            }
+            
+            lastLaunchTime = System.currentTimeMillis()
+            isActivityInProgress = true
+            
+            // Add FLAG_ACTIVITY_NEW_TASK if not called from an Activity
+            if (context !is Activity) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            
+            context.startActivity(intent)
+        }
+
         /**
          * Open from service
          *
@@ -145,8 +186,7 @@ class NoDisplayActivity : BaseActivity() {
          */
         fun startNewTask(context: Context, screenshot: Boolean) {
             val intent = newIntent(context, screenshot)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
+            startActivityThrottled(context, intent)
         }
 
         /**
@@ -156,8 +196,7 @@ class NoDisplayActivity : BaseActivity() {
          */
         fun startNewTaskPartial(context: Context) {
             val intent = newPartialIntent(context)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
+            startActivityThrottled(context, intent)
         }
 
         /**
@@ -167,8 +206,7 @@ class NoDisplayActivity : BaseActivity() {
          */
         fun startNewTaskLegacyScreenshot(context: Context) {
             val intent = newLegacyIntent(context)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
+            startActivityThrottled(context, intent)
         }
 
         /**
@@ -224,5 +262,10 @@ class NoDisplayActivity : BaseActivity() {
             intent.putExtra(EXTRA_FLOATING_BUTTON, true)
             return intent
         }
+    }
+    
+    override fun finish() {
+        isActivityInProgress = false
+        super.finish()
     }
 }

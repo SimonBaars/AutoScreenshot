@@ -1,6 +1,7 @@
 package com.github.cvzi.screenshottile.utils
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.Dialog
 import android.app.KeyguardManager
 import android.app.LocaleManager
@@ -62,7 +63,8 @@ const val UTILSKT = "Utils.kt"
  * Start screenshot activity and take a screenshot
  */
 fun screenshotLegacyOnly(context: Context) {
-    TakeScreenshotActivity.start(context, false)
+    // Directly use the ScreenshotManager, don't do additional checks
+    ScreenshotManager.attemptScreenshot(context, false)
 }
 
 /**
@@ -70,7 +72,8 @@ fun screenshotLegacyOnly(context: Context) {
  */
 fun screenshot(context: Context, partial: Boolean = false) {
     if (partial || !tryNativeScreenshot()) {
-        TakeScreenshotActivity.start(context, partial)
+        // Directly use the ScreenshotManager without additional checks
+        ScreenshotManager.attemptScreenshot(context, partial)
     }
 }
 

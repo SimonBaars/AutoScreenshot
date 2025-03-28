@@ -2,9 +2,13 @@ package com.github.cvzi.screenshottile.activities
 
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.icu.text.DateFormat
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import androidx.appcompat.app.AlertDialog
@@ -17,15 +21,20 @@ import com.burhanrashid52.photoediting.EditImageActivity
 import com.github.cvzi.screenshottile.App
 import com.github.cvzi.screenshottile.BR
 import com.github.cvzi.screenshottile.R
+import com.github.cvzi.screenshottile.ToastType
 import com.github.cvzi.screenshottile.databinding.ActivityHistoryBinding
 import com.github.cvzi.screenshottile.databinding.ActivityMainBinding
 import com.github.cvzi.screenshottile.utils.ScreenshotHistoryAdapter
 import com.github.cvzi.screenshottile.utils.SingleImage
 import com.github.cvzi.screenshottile.utils.cleanUpAppData
+import com.github.cvzi.screenshottile.utils.compressionPreference
 import com.github.cvzi.screenshottile.utils.formatLocalizedString
 import com.github.cvzi.screenshottile.utils.getLocalizedString
+import com.github.cvzi.screenshottile.utils.screenshot
+import com.github.cvzi.screenshottile.utils.toastMessage
 import java.io.File
 import java.util.Date
+import java.util.Locale
 
 
 /**
@@ -37,6 +46,7 @@ class HistoryActivity : BaseAppCompatActivity() {
     }
 
     private lateinit var binding: ActivityHistoryBinding
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView<ActivityHistoryBinding>(this, R.layout.activity_history)
@@ -56,6 +66,39 @@ class HistoryActivity : BaseAppCompatActivity() {
                 }
             }
         }
+        
+        // Set up the FAB to take a screenshot
+        binding.fabTakeScreenshot.setOnClickListener {
+            takeScreenshotAndRefresh()
+        }
+    }
+    
+    private fun takeScreenshotAndRefresh() {
+        // First make sure history is enabled
+        if (!App.getInstance().prefManager.keepScreenshotHistory) {
+            App.getInstance().prefManager.keepScreenshotHistory = true
+            binding.switchKeepHistory.isChecked = true
+            toastMessage("Screenshot history is now enabled", ToastType.SUCCESS)
+        }
+        
+        // Take the screenshot
+        screenshot(this)
+        
+        // Wait a moment for the screenshot to be saved then refresh the UI
+        Handler(Looper.getMainLooper()).postDelayed({
+            refreshHistory()
+        }, 1500)
+    }
+    
+    @SuppressLint("NotifyDataSetChanged")
+    private fun refreshHistory() {
+        val data = loadImageList()
+        val adapter = binding.recyclerView.adapter as? ScreenshotHistoryAdapter
+        adapter?.run {
+            dataSet = data
+            notifyDataSetChanged()
+        }
+        updateStatistics(data)
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -74,6 +117,7 @@ class HistoryActivity : BaseAppCompatActivity() {
                     dataSet = loadImageList()
                     notifyDataSetChanged()
                 }
+                updateStatistics(ArrayList())
             }
         }.setNegativeButton(android.R.string.cancel) { dialog, _ ->
             dialog.dismiss()
@@ -96,8 +140,32 @@ class HistoryActivity : BaseAppCompatActivity() {
         }
         recyclerView.adapter = adapter
 
-        binding.switchKeepHistory.isChecked =
-            App.getInstance().prefManager.keepScreenshotHistory
+        binding.switchKeepHistory.isChecked = App.getInstance().prefManager.keepScreenshotHistory
+        
+        // Update the statistics display
+        updateStatistics(data)
+    }
+    
+    private fun updateStatistics(data: ArrayList<SingleImage>) {
+        val screenshotCount = App.getInstance().prefManager.screenshotCount
+        binding.textTotalScreenshots.text = screenshotCount.toString()
+        
+        // Find the most recent screenshot date
+        val mostRecentDate = data.mapNotNull { it.lastModified }.maxByOrNull { it }
+        val dateFormat = DateFormat.getDateTimeInstance(
+            DateFormat.MEDIUM,
+            DateFormat.SHORT,
+            Locale.getDefault()
+        )
+        binding.textLastScreenshotTime.text = if (mostRecentDate != null) {
+            dateFormat.format(mostRecentDate)
+        } else {
+            "Never"
+        }
+        
+        // Get the current file format setting
+        val compressionOptions = compressionPreference(this)
+        binding.textScreenshotFormat.text = compressionOptions.fileExtension.uppercase()
     }
 
     private fun loadImageList(): ArrayList<SingleImage> {
@@ -129,16 +197,17 @@ class HistoryActivity : BaseAppCompatActivity() {
 
         // Add files from history
         for (item in App.getInstance().prefManager.screenshotHistory) {
-            data.add(SingleImage(item.uri, item.file, lastModified = item.date))
+            if (item.uri !in allUris && (item.file == null || item.file !in allFiles)) {
+                data.add(SingleImage(item.uri, item.file, lastModified = item.date))
+                allUris[item.uri] = true
+                item.file?.let { allFiles[it] = true }
+            }
         }
 
-        data = ArrayList(data.filter {
-            it.uri !in allUris || it.file == null || it.file !in allFiles
-        })
+        // Sort by date, most recent first
         data.sortByDescending { it.lastModified }
         return data
     }
-
 }
 
 

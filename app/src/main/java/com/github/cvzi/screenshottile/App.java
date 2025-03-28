@@ -220,9 +220,9 @@ public class App extends Application {
      */
     public static void openScreenshotPermissionRequester(Context context) {
         final Intent intent = new Intent(context, AcquireScreenshotPermission.class);
-        intent.addFlags(FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra(AcquireScreenshotPermission.EXTRA_REQUEST_PERMISSION_SCREENSHOT, true);
-        context.startActivity(intent);
+        // Use the throttled method to start the activity
+        AcquireScreenshotPermission.Companion.startPermissionRequest(context, intent);
     }
 
     /**
@@ -233,10 +233,10 @@ public class App extends Application {
      */
     public static void requestStoragePermission(Context context, boolean screenshot) {
         final Intent intent = new Intent(context, AcquireScreenshotPermission.class);
-        intent.addFlags(FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra(AcquireScreenshotPermission.EXTRA_REQUEST_PERMISSION_STORAGE, true);
         intent.putExtra(AcquireScreenshotPermission.EXTRA_TAKE_SCREENSHOT_AFTER, screenshot);
-        context.startActivity(intent);
+        // Use the throttled method to start the activity
+        AcquireScreenshotPermission.Companion.startPermissionRequest(context, intent);
     }
 
     public static boolean checkAccessibilityServiceOnCollapse() {

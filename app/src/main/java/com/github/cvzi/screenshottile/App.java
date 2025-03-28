@@ -306,6 +306,13 @@ public class App extends Application {
         applyDayNightMode();
 
         cleanUpAppData(this);
+        
+        // Start auto screenshot service if enabled
+        if (prefManager.getAutoScreenshotEnabled()) {
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                BasicForegroundService.Companion.startAutoScreenshots(this);
+            }, 3000);
+        }
     }
 
     /**

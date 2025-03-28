@@ -438,9 +438,19 @@ fun createOutputStreamForExistingUri(
 fun formatFileName(fileNamePattern: String, date: Date): String {
     val timeStamp: String = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(date)
     val counter = App.getInstance().prefManager.screenshotCount.toString()
-
+    
+    val yearFormat = SimpleDateFormat("yy", Locale.US)
+    val monthFormat = SimpleDateFormat("MM", Locale.US)
+    val dayFormat = SimpleDateFormat("dd", Locale.US)
+    val hourMinSecFormat = SimpleDateFormat("HH_mm_ss", Locale.US)
+    
     var fileName = fileNamePattern.replace("%timestamp%", timeStamp)
     fileName = fileName.replace("%counter%", counter.padStart(max(5, counter.length), '0'))
+    fileName = fileName.replace("%yy%", yearFormat.format(date))
+    fileName = fileName.replace("%MM%", monthFormat.format(date))
+    fileName = fileName.replace("%dd%", dayFormat.format(date))
+    fileName = fileName.replace("%hh_mm_ss%", hourMinSecFormat.format(date))
+    
     while (fileName.contains("%randint%")) {
         val randInt = Random.Default.nextInt(0, Int.MAX_VALUE).toString()
             .padStart(Int.MAX_VALUE.toString().length, '0')

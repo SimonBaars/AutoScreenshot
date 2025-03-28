@@ -7,6 +7,28 @@
         android:key="@string/pref_key_hide_app"
         android:title="@string/hide_app_from_launcher"
         app:iconSpaceReserved="false" />
+        
+    <androidx.preference.SwitchPreference
+        android:defaultValue="false"
+        android:key="@string/pref_key_auto_screenshot_enabled"
+        android:title="@string/setting_auto_screenshot_enabled"
+        android:summary="@string/setting_auto_screenshot_enabled_summary"
+        app:iconSpaceReserved="false" />
+        
+    <androidx.preference.EditTextPreference
+        android:defaultValue="10"
+        android:inputType="number"
+        android:key="@string/pref_key_auto_screenshot_interval"
+        android:title="@string/setting_auto_screenshot_interval"
+        android:summary="@string/setting_auto_screenshot_interval_summary" 
+        app:iconSpaceReserved="false" />
+        
+    <androidx.preference.SwitchPreference
+        android:defaultValue="false"
+        android:key="@string/pref_key_auto_screenshot_start_on_boot"
+        android:title="@string/setting_auto_screenshot_start_on_boot"
+        android:summary="@string/setting_auto_screenshot_start_on_boot_summary"
+        app:iconSpaceReserved="false" />
 
     <androidx.preference.SwitchPreference
         android:defaultValue="true"

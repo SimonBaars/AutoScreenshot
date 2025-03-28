@@ -457,6 +457,30 @@ class PrefManager(private val context: Context, private val pref: SharedPreferen
             context.getString(R.string.pref_key_dark_theme),
             value
         ).apply()
+    
+    var autoScreenshotEnabled: Boolean
+        get() = pref.getBoolean(context.getString(R.string.pref_key_auto_screenshot_enabled), false)
+        set(value) = pref.edit().putBoolean(
+            context.getString(R.string.pref_key_auto_screenshot_enabled),
+            value
+        ).apply()
+    
+    var autoScreenshotInterval: Int
+        get() = pref.getString(
+            context.getString(R.string.pref_key_auto_screenshot_interval),
+            "10"
+        )?.toIntOrNull() ?: 10
+        set(value) = pref.edit().putString(
+            context.getString(R.string.pref_key_auto_screenshot_interval),
+            value.toString()
+        ).apply()
+    
+    var autoScreenshotStartOnBoot: Boolean
+        get() = pref.getBoolean(context.getString(R.string.pref_key_auto_screenshot_start_on_boot), false)
+        set(value) = pref.edit().putBoolean(
+            context.getString(R.string.pref_key_auto_screenshot_start_on_boot),
+            value
+        ).apply()
 
     var toasts: Boolean
         get() = pref.getBoolean(context.getString(R.string.pref_key_toasts), true)

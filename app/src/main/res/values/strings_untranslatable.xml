@@ -49,7 +49,7 @@
     <string name="pref_key_return_if_voice_interaction" translatable="false">return_if_voice_interaction</string>
     <string name="setting_broadcast_secret_value_default" translatable="false">(unset)</string>
     <string name="setting_storage_directory_value_default" translatable="false">(default)</string>
-    <string name="setting_file_name_pattern_value_default" formatted="false" translatable="false">Screenshot_%timestamp%</string>
+    <string name="setting_file_name_pattern_value_default" formatted="false" translatable="false">Screenshots/%yy%/%MM%/%dd%/%hh_mm_ss%.png</string>
     <string name="pref_key_file_names_recent" translatable="false">file_names_recent</string>
     <string name="pref_key_file_names_starred" translatable="false">file_names_starred</string>
     <string name="pref_key_recent_folders" translatable="false">recent_folders</string>
@@ -218,6 +218,10 @@
         <item>@string/setting_dark_theme_off</item>
         <item>@string/setting_dark_theme_on</item>
     </string-array>
+    
+    <string name="pref_key_auto_screenshot_enabled" translatable="false">auto_screenshot_enabled</string>
+    <string name="pref_key_auto_screenshot_interval" translatable="false">auto_screenshot_interval</string>
+    <string name="pref_key_auto_screenshot_start_on_boot" translatable="false">auto_screenshot_start_on_boot</string>
 
     <string name="pref_key_notification_actions" translatable="false">notification_actions</string>
     <string-array name="setting_notification_actions_entries" translatable="false">

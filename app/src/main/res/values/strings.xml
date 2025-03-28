@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Screenshot Tile</string>
-    <string name="app_name_long">&#x200c;Screenshot Tile (NoRoot)</string>
+    <string name="app_name">AutoScreenshot</string>
+    <string name="app_name_long">&#x200c;AutoScreenshot (NoRoot)</string>
     <string name="tile_label">&#x200c;Screenshot</string>
     <string name="tile_floating">&#x200c;Floating Screenshot Button</string>
     <string name="tile_floating_label">&#x200c;Floating</string>
@@ -249,6 +249,14 @@
     <string name="setting_floating_button_color">&#x200c;Floating button color</string>
     <string name="setting_delay_custom_summary">&#x200c;Choose a custom delay for the tile (in seconds)</string>
     <string name="setting_floating_button_delay_custom_summary">&#x200c;Choose a custom delay for the floating button (in seconds)</string>
+    <string name="setting_auto_screenshot">&#x200c;Automatic screenshots</string>
+    <string name="setting_auto_screenshot_summary">&#x200c;Takes screenshots automatically at set intervals</string>
+    <string name="setting_auto_screenshot_enabled">&#x200c;Enable automatic screenshots</string>
+    <string name="setting_auto_screenshot_enabled_summary">&#x200c;When enabled, screenshots will be taken automatically at set intervals</string>
+    <string name="setting_auto_screenshot_interval">&#x200c;Screenshot interval (seconds)</string>
+    <string name="setting_auto_screenshot_interval_summary">&#x200c;Time between automatic screenshots in seconds</string>
+    <string name="setting_auto_screenshot_start_on_boot">&#x200c;Start on device boot</string>
+    <string name="setting_auto_screenshot_start_on_boot_summary">&#x200c;Automatically start taking screenshots when the device boots</string>
     <string name="setting_format_quality">&#x200c;File format quality</string>
     <string name="setting_format_quality_dialog">&#x200c;Compression/Quality of the file format: (0 to 100)\n0 means compress for the smallest size. 100 means compress for max visual quality.\nLeave empty to use the default value.</string>
     <string name="setting_keep_app_data_max">&#x200c;Max. number of screenshots to keep in:</string>

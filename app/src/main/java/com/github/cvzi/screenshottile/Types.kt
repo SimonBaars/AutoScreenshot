@@ -28,11 +28,11 @@ enum class PackageNameFilterMode {
 
     companion object {
         fun fromInt(i: Int): PackageNameFilterMode {
-            return entries.getOrElse(i) { entries[0] }
+            return values().getOrElse(i) { values()[0] }
         }
 
         fun fromString(s: String): PackageNameFilterMode? {
-            return entries.firstOrNull { it.name == s }
+            return values().firstOrNull { it.name == s }
         }
     }
 }

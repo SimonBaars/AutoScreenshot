@@ -177,7 +177,7 @@ class PostCropActivity : GenericPostActivity() {
             fullScreenIcon = R.drawable.ic_fullscreen
             onShutter = {
                 // If there is a cutout or status bars, the view might have a offset
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                if (Build.VERSION.SDK_INT < 34) {
                     val selectorViewOffset = intArrayOf(0, 0)
                     getLocationOnScreen(selectorViewOffset)
                     it.offset(selectorViewOffset[0], selectorViewOffset[1])

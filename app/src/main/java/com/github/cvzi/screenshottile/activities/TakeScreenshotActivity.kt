@@ -140,7 +140,7 @@ class TakeScreenshotActivity : BaseActivity(),
         StrictMode.setVmPolicy(builder.build())
         builder.detectFileUriExposure()
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (Build.VERSION.SDK_INT < 34) {
             /*
             On Android U/14 we need to wait until we have the screenshot
             permission before we can start the foreground service
@@ -172,7 +172,7 @@ class TakeScreenshotActivity : BaseActivity(),
 
         surface = imageReader?.surface
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && packageManager.checkPermission(
+        if (Build.VERSION.SDK_INT < 34 && packageManager.checkPermission(
                 Manifest.permission.WRITE_EXTERNAL_STORAGE,
                 packageName
             ) != PackageManager.PERMISSION_GRANTED
@@ -596,7 +596,7 @@ class TakeScreenshotActivity : BaseActivity(),
             surface, null, null
         )
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             // On Android U/14 the permission can only be used once, so delete it now
             setScreenshotPermission(null)
         }

@@ -61,7 +61,7 @@ class NoDisplayActivity : BaseActivity() {
                     EXTRA_LEGACY, false
                 )
             ) {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                if (Build.VERSION.SDK_INT < 34) { // UPSIDE_DOWN_CAKE is API 34
                     // make sure that a foreground service runs
                     /*
                     On Android U/14 we need to wait until we have the screenshot

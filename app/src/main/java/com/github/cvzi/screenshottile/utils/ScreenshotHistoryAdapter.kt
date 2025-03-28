@@ -49,10 +49,9 @@ class ScreenshotHistoryAdapter(
     inner class ViewHolder(
         private var view: ViewGroup,
         private var lifecycleOwner: LifecycleOwner,
-        private val onClick: (SingleImage, View) -> Unit,
-        override val lifecycle: Lifecycle
+        private val onClick: (SingleImage, View) -> Unit
     ) :
-        RecyclerView.ViewHolder(view), LifecycleOwner {
+        RecyclerView.ViewHolder(view) {
         val textViewFileName: TextView
         val textViewDate: TextView
         val textViewFolder: TextView
@@ -62,7 +61,7 @@ class ScreenshotHistoryAdapter(
         val buttonMove: Button
 
         private var currentRecord: SingleImage? = null
-        private val lifecycleRegistry = LifecycleRegistry(this)
+        private val lifecycleRegistry = LifecycleRegistry(lifecycleOwner)
         private var paused: Boolean = false
 
         init {
@@ -181,7 +180,7 @@ class ScreenshotHistoryAdapter(
         val itemBinding = DataBindingUtil.inflate<HistoryItemBinding>(LayoutInflater.from(viewGroup.context), R.layout.history_item, viewGroup, false)
         itemBinding .setVariable(BR.strings, App.texts)
 
-        return ViewHolder(itemBinding .root as ViewGroup, activity, onClick, activity.lifecycle)
+        return ViewHolder(itemBinding .root as ViewGroup, activity, onClick)
     }
 
     // Replace the contents of a view (invoked by the layout manager)

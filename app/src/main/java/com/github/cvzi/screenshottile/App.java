@@ -129,7 +129,7 @@ public class App extends Application {
     @SuppressWarnings("UnusedReturnValue")
     public static MediaProjection createMediaProjection() {
         if (BuildConfig.DEBUG) Log.v(TAG, "createMediaProjection()");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        if (Build.VERSION.SDK_INT >= 34) { // Android 14 (UPSIDE_DOWN_CAKE) is API 34
             /*
              On Android U/14 mediaProjection cannot be re-used,
              need to create a new one with a new screenshot permission each time
@@ -153,7 +153,14 @@ public class App extends Application {
             if (screenshotPermission == null) {
                 return null;
             }
-            mediaProjection = mediaProjectionManager.getMediaProjection(Activity.RESULT_OK, (Intent) screenshotPermission.clone());
+            if (Build.VERSION.SDK_INT >= 34) { // Android 14 (UPSIDE_DOWN_CAKE) is API 34
+                /*
+                 On Android U/14 mediaProjection cannot be re-used, so don't create it here already
+                 */
+                mediaProjection = null;
+            } else {
+                mediaProjection = mediaProjectionManager.getMediaProjection(Activity.RESULT_OK, (Intent) screenshotPermission.clone());
+            }
         }
         return mediaProjection;
     }
@@ -187,7 +194,7 @@ public class App extends Application {
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 BasicForegroundService.Companion.startForegroundService(context);
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (Build.VERSION.SDK_INT >= 34) { // Android 14 (UPSIDE_DOWN_CAKE) is API 34
                 /*
                  On Android U/14 mediaProjection cannot be re-used, so don't create it here already
                  */

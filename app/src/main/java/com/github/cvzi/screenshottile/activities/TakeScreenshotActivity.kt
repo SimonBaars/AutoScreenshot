@@ -39,6 +39,7 @@ import com.github.cvzi.screenshottile.R
 import com.github.cvzi.screenshottile.SaveImageResult
 import com.github.cvzi.screenshottile.SaveImageResultSuccess
 import com.github.cvzi.screenshottile.ToastType
+import com.github.cvzi.screenshottile.utils.toastMessage
 import com.github.cvzi.screenshottile.interfaces.OnAcquireScreenshotPermissionListener
 import com.github.cvzi.screenshottile.partial.ScreenshotSelectorView
 import com.github.cvzi.screenshottile.services.BasicForegroundService
@@ -86,6 +87,18 @@ class TakeScreenshotActivity : BaseActivity(),
             // Use ScreenshotManager to check if we can take a screenshot
             if (!ScreenshotManager.canTakeScreenshotNow()) {
                 Log.d(TAG, "Skipping screenshot request - throttled by ScreenshotManager")
+                // Don't show toast for automatic screenshots from the service
+                if (!(context is BasicForegroundService)) {
+                    // Only show toast for manual user-initiated screenshots
+                    val appContext = context.applicationContext
+                    Handler(Looper.getMainLooper()).post {
+                        context.toastMessage(
+                            R.string.screenshot_in_progress,
+                            ToastType.SUCCESS,
+                            Toast.LENGTH_SHORT
+                        )
+                    }
+                }
                 return
             }
             
@@ -396,18 +409,29 @@ class TakeScreenshotActivity : BaseActivity(),
                 App.createMediaProjection()
             } catch (e: SecurityException) {
                 Log.e(TAG, "prepareForScreenSharing(): SecurityException 3")
-                Handler(Looper.getMainLooper()).postDelayed({
-                    // Something went wrong, restart everything
-                    finish()
-                    App.getInstance().screenshot(this)
-                }, 500)
+                // Don't show error toast in auto mode
+                if (this.applicationContext.packageName.contains(".services.BasicForegroundService")) {
+                    Log.d(TAG, "Auto screenshot: Not showing toast for SecurityException in auto mode")
+                } else {
+                    screenShotFailedToast("Failed to create MediaProjection: ${e.localizedMessage}", Toast.LENGTH_SHORT)
+                }
+                
+                // For auto mode, just finish - don't try to restart
+                // This prevents recursive loop of error toasts
+                finish()
                 return
             }
             if (mediaProjection == null) {
-                screenShotFailedToast("Failed to create MediaProjection", Toast.LENGTH_SHORT)
-                // Something went wrong, restart everything
+                // Don't show error toast in auto mode
+                if (this.applicationContext.packageName.contains(".services.BasicForegroundService")) {
+                    Log.d(TAG, "Auto screenshot: Not showing toast for null MediaProjection in auto mode")
+                } else {
+                    screenShotFailedToast("Failed to create MediaProjection", Toast.LENGTH_SHORT)
+                }
+                
+                // For auto mode, just finish - don't try to restart
+                // This prevents recursive loop of error toasts
                 finish()
-                App.getInstance().screenshot(this)
                 return
             }
         }

@@ -162,6 +162,13 @@ class NoDisplayActivity : BaseActivity() {
          * Launch activity with throttling
          */
         private fun startActivityThrottled(context: Context, intent: Intent) {
+            // First check the global screenshot manager to prevent infinite loops
+            if (!ScreenshotManager.canTakeScreenshotNow()) {
+                Log.d(TAG, "Skipping activity launch - ScreenshotManager reports screenshot in progress")
+                return
+            }
+            
+            // Then check local throttling
             if (!canLaunchNow()) {
                 Log.d(TAG, "Skipping activity launch - another one is in progress or too recent")
                 return
@@ -175,6 +182,7 @@ class NoDisplayActivity : BaseActivity() {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             
+            Log.d(TAG, "Starting new activity: ${intent.component?.className}")
             context.startActivity(intent)
         }
 

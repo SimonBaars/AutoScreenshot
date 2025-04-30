@@ -116,6 +116,7 @@
     <string name="notification_app_chooser_share">&#x200c;Share file with…</string>
     <string name="notification_app_chooser_edit">&#x200c;Edit file with…</string>
     <string name="screenshot_failed">&#x200c;Failed to take screenshot, please try again</string>
+    <string name="screenshot_in_progress">&#x200c;Screenshot is already in progress</string>
     <!-- Shown when a screenshot file was successfully saved. For example "Screenshot saved /Pictures/Screenshot_01.jpg" -->
     <string name="screenshot_file_saved">&#x200c;Screenshot saved %1$s</string>
     <string name="notification_delete_screenshot">&#x200c;Delete</string>

@@ -10,12 +10,15 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import com.github.cvzi.screenshottile.App
 import com.github.cvzi.screenshottile.BuildConfig
+import com.github.cvzi.screenshottile.ToastType
 import com.github.cvzi.screenshottile.activities.TakeScreenshotActivity
 import com.github.cvzi.screenshottile.activities.NoDisplayActivity
 import com.github.cvzi.screenshottile.utils.foregroundNotification
 import com.github.cvzi.screenshottile.utils.ScreenshotManager
+import com.github.cvzi.screenshottile.utils.toastMessage
 
 /**
  * Foreground service for MediaProjection and automatic screenshots
@@ -121,6 +124,25 @@ class BasicForegroundService : Service() {
             START_AUTO_SCREENSHOTS -> {
                 foreground()
                 startAutoScreenshotLoop()
+                
+                // Show info notification about where screenshots are saved
+                val prefManager = App.getInstance().prefManager
+                val useAppData = "saveToStorage" !in prefManager.postScreenshotActions
+                
+                val savePath = if (useAppData) {
+                    // App data path
+                    "/storage/emulated/0/Android/data/com.github.cvzi.screenshottile/files/"
+                } else {
+                    // Default path in Pictures
+                    "/storage/emulated/0/Pictures/${TakeScreenshotActivity.SCREENSHOT_DIRECTORY}/"
+                }
+                
+                // Show path info toast
+                this.toastMessage(
+                    "Auto screenshots will be saved to: $savePath",
+                    ToastType.SUCCESS,
+                    Toast.LENGTH_LONG
+                )
             }
             STOP_AUTO_SCREENSHOTS -> {
                 stopAutoScreenshotLoop()
@@ -201,35 +223,71 @@ class BasicForegroundService : Service() {
                 }
                 
                 try {
-                    // Check service-level throttling 
-                    val now = System.currentTimeMillis()
-                    val timeSinceLastScreenshot = now - lastScreenshotTime
-                    
-                    if (timeSinceLastScreenshot < MIN_SCREENSHOT_INTERVAL_MS) {
-                        Log.d(TAG, "Auto screenshot: skipping - too soon ($timeSinceLastScreenshot ms < $MIN_SCREENSHOT_INTERVAL_MS ms)")
-                    } else {
+                    // Check if any screenshot activity is already running to prevent activity spam
+                    if (TakeScreenshotActivity.instance != null) {
+                        Log.d(TAG, "Auto screenshot: skipping - TakeScreenshotActivity is already running")
+                    } 
+                    // Only attempt a screenshot if the ScreenshotManager indicates it's safe
+                    else if (ScreenshotManager.canTakeScreenshotNow()) {
                         Log.d(TAG, "Auto screenshot: attempting to take screenshot")
                         
-                        // Let the ScreenshotManager decide if we can take a screenshot
-                        if (ScreenshotManager.attemptScreenshot(this@BasicForegroundService, false)) {
-                            lastScreenshotTime = now
-                            Log.d(TAG, "Auto screenshot: successfully initiated")
+                        // Update our local timestamp as well to prevent trying again too soon
+                        lastScreenshotTime = System.currentTimeMillis()
+                        
+                        try {
+                            // First check if we have valid permission before starting the activity
+                            if (App.getScreenshotPermission() == null) {
+                                // No valid permission, need to request again
+                                Log.d(TAG, "Auto screenshot: No valid MediaProjection permission, requesting")
+                                App.openScreenshotPermissionRequester(this@BasicForegroundService)
+                            } else {
+                                // IMPORTANT: Use direct media projection method rather than activity-based method
+                                // to avoid activity-related issues in auto mode
+                                Log.d(TAG, "Auto screenshot: Using direct media projection method")
+                                
+                                // Create a handler for background work
+                                val handler = Handler(Looper.getMainLooper())
+                                
+                                // Capture the screenshot directly using existing media projection
+                                val mediaProjection = App.createMediaProjection()
+                                if (mediaProjection != null) {
+                                    Log.d(TAG, "Auto screenshot: MediaProjection created successfully, taking screenshot")
+                                    
+                                    // Use the App methods to trigger the screenshot
+                                    App.getInstance().run {
+                                        // This will call NoDisplayActivity but with a clean state
+                                        screenshot(this@BasicForegroundService)
+                                    }
+                                } else {
+                                    Log.e(TAG, "Auto screenshot: Failed to create MediaProjection")
+                                    // Try to request new permission for next attempt
+                                    App.setScreenshotPermission(null)
+                                    App.openScreenshotPermissionRequester(this@BasicForegroundService)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Auto screenshot: Error starting activity", e)
                         }
+                    } else {
+                        Log.d(TAG, "Auto screenshot: skipping - ScreenshotManager indicates not ready")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Auto screenshot: error taking screenshot", e)
                 } finally {
-                    // Always schedule the next screenshot based on the interval
-                    val intervalSeconds = App.getInstance().prefManager.autoScreenshotInterval
-                    Log.d(TAG, "Auto screenshot: scheduling next attempt in $intervalSeconds seconds")
-                    handler.postDelayed(this, intervalSeconds * 1000L)
+                    // Schedule the next screenshot with a safer delay
+                    // Use the maximum of the configured interval and the minimum safe interval
+                    val configuredIntervalMs = App.getInstance().prefManager.autoScreenshotInterval * 1000L
+                    val safeIntervalMs = Math.max(configuredIntervalMs, 15000L) // Minimum 15 seconds for auto mode
+                    
+                    Log.d(TAG, "Auto screenshot: scheduling next attempt in ${safeIntervalMs/1000} seconds")
+                    handler.postDelayed(this, safeIntervalMs)
                 }
             }
         }
         
-        // Start the loop immediately
-        Log.d(TAG, "startAutoScreenshotLoopInternal: posting first runnable")
-        autoScreenshotRunnable?.let { handler.post(it) }
+        // Start the loop with a 3-second initial delay to ensure the system is ready
+        Log.d(TAG, "startAutoScreenshotLoopInternal: posting first runnable with 3 second delay")
+        autoScreenshotRunnable?.let { handler.postDelayed(it, 3000) }
     }
 
     /**
